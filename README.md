@@ -113,6 +113,8 @@ cd dashboard && npm run dev
 
 The project includes an [n8n](https://n8n.io/) workflow that automatically processes new statements as they're added.
 
+![n8n Workflow](screenshots/n8n-workflow.png)
+
 **How it works:**
 
 ```
