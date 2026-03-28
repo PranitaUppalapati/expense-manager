@@ -1,0 +1,24 @@
+# Personal data — NEVER commit
+*.pdf
+*.xlsx
+*.xls
+*.csv
+~$*
+Decrypted_PDFs/
+statements/**/*
+!statements/.gitkeep
+
+# Generated / output
+dashboard/src/data/transactions.json
+processed_files.json
+
+# Dependencies & build
+dashboard/node_modules/
+dashboard/dist/
+__pycache__/
+*.pyc
+
+# OS / IDE
+.DS_Store
+.claude/
+memory/

@@ -1,0 +1,133 @@
+{
+  "name": "Bank Statement Auto-Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-statement",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-trigger",
+      "name": "Watch Statements Folder",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "process-statement"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "node-wait",
+      "name": "Wait 2s (file settle)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const { execSync } = require('child_process');\n\nconst filePath = $input.first().json.body?.path || $input.first().json.path;\n\nif (!filePath) {\n  return [{ json: { exitCode: 1, stderr: 'No file path provided in request body', file: null } }];\n}\n\ntry {\n  const stdout = execSync(\n    `cd /Users/uppal1/Downloads/SBI_Debit_statements && python3 process_data.py --file=\"${filePath}\"`,\n    { encoding: 'utf8', timeout: 120000 }\n  );\n  return [{ json: { exitCode: 0, stdout, file: filePath } }];\n} catch (e) {\n  return [{ json: {\n    exitCode: e.status || 1,\n    stderr: e.stderr?.toString() || e.message,\n    file: filePath\n  } }];\n}"
+      },
+      "id": "node-exec",
+      "name": "Run process_data.py",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-exit-code",
+              "leftValue": "={{ $json.exitCode }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if",
+      "name": "Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            { "name": "status",  "stringValue": "✅ Processed successfully" },
+            { "name": "file",    "stringValue": "={{ $('Run process_data.py').item.json.file }}" },
+            { "name": "stdout",  "stringValue": "={{ $('Run process_data.py').item.json.stdout }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-success",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, 180]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            { "name": "status",   "stringValue": "❌ Processing failed" },
+            { "name": "file",     "stringValue": "={{ $('Run process_data.py').item.json.file }}" },
+            { "name": "exitCode", "stringValue": "={{ $('Run process_data.py').item.json.exitCode }}" },
+            { "name": "stderr",   "stringValue": "={{ $('Run process_data.py').item.json.stderr }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, 420]
+    }
+  ],
+  "connections": {
+    "Watch Statements Folder": {
+      "main": [
+        [{ "node": "Wait 2s (file settle)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 2s (file settle)": {
+      "main": [
+        [{ "node": "Run process_data.py", "type": "main", "index": 0 }]
+      ]
+    },
+    "Run process_data.py": {
+      "main": [
+        [{ "node": "Success?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Success?": {
+      "main": [
+        [{ "node": "Log Success", "type": "main", "index": 0 }],
+        [{ "node": "Log Error",   "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["finance", "automation"],
+  "_meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "spendly-local"
+  }
+}
