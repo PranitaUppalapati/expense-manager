@@ -109,15 +109,36 @@ Output is written to `dashboard/src/data/transactions.json`.
 cd dashboard && npm run dev
 ```
 
-### Automated processing (optional)
+### Automated processing with n8n (optional)
 
-Start everything with PM2:
+The project includes an [n8n](https://n8n.io/) workflow that automatically processes new statements as they're added.
+
+**How it works:**
+
+```
+fswatch (file watcher)
+  → detects new file in statements/
+  → sends POST to http://localhost:5678/webhook/process-statement
+      → n8n receives the webhook
+      → waits 2s for the file to finish writing
+      → runs python3 process_data.py --file="<path>"
+      → logs success or error
+```
+
+**Setup:**
+
+1. Install [n8n](https://docs.n8n.io/hosting/installation/) and [PM2](https://pm2.keymetrics.io/)
+2. Import `n8n_workflow.json` into your n8n instance
+3. Start everything with PM2:
 
 ```bash
 pm2 start ecosystem.config.js
 ```
 
-This runs the dashboard, n8n, and a file watcher that auto-processes new statements dropped into `statements/`.
+This launches three services:
+- **dashboard** — Vite dev server for the React app
+- **n8n** — Workflow automation engine (webhook listener)
+- **fswatch-trigger** — Watches `statements/` and triggers the n8n webhook on new files
 
 ## Adding Statements
 
